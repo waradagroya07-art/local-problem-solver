@@ -6,6 +6,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 
 import java.time.LocalDateTime;
 
@@ -19,6 +21,7 @@ public class Problem {
     // Parameterized constructor
     public Problem(String title, String description, Severity severity,
                    ProblemStatus status, Priority priority,
+                   Category category,
                    String location, Double latitude, Double longitude,
                    LocalDateTime createdAt, LocalDateTime updatedAt) {
 
@@ -27,6 +30,7 @@ public class Problem {
         this.severity = severity;
         this.status = status;
         this.priority = priority;
+        this.category = category;
         this.location = location;
         this.latitude = latitude;
         this.longitude = longitude;
@@ -51,6 +55,10 @@ public class Problem {
     @Enumerated(EnumType.STRING)
     private Priority priority;
 
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private Category category;
+
     private String location;
 
     private Double latitude;
@@ -60,7 +68,6 @@ public class Problem {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
-
 
     // Getters and Setters
 
@@ -110,6 +117,14 @@ public class Problem {
 
     public void setPriority(Priority priority) {
         this.priority = priority;
+    }
+
+    public Category getCategory() {
+        return category;
+    }
+
+    public void setCategory(Category category) {
+        this.category = category;
     }
 
     public String getLocation() {
