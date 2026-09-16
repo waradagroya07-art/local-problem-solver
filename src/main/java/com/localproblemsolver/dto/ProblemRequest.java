@@ -15,6 +15,8 @@ public class ProblemRequest {
     @NotNull(message = "Severity is required")
     private Severity severity;
 
+    private Long categoryId;
+
     @NotBlank(message = "Location is required")
     private String location;
 
@@ -31,6 +33,14 @@ public class ProblemRequest {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public Long getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(Long categoryId) {
+        this.categoryId = categoryId;
     }
 
     public String getDescription() {

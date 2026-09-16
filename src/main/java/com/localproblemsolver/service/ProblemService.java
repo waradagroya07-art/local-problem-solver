@@ -1,14 +1,17 @@
 package com.localproblemsolver.service;
 
+import com.localproblemsolver.dto.ProblemRequest;
 import com.localproblemsolver.dto.ProblemResponse;
+import com.localproblemsolver.entity.Category;
 import com.localproblemsolver.entity.Priority;
 import com.localproblemsolver.entity.Problem;
 import com.localproblemsolver.entity.ProblemStatus;
-import com.localproblemsolver.repository.ProblemRepository;
-import org.springframework.stereotype.Service;
 import com.localproblemsolver.exception.InvalidStatusTransitionException;
 import com.localproblemsolver.exception.ProblemNotFoundException;
-
+import com.localproblemsolver.repository.CategoryRepository;
+import com.localproblemsolver.repository.ProblemRepository;
+import org.springframework.stereotype.Service;
+import com.localproblemsolver.dto.CategoryResponse;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -16,12 +19,25 @@ import java.util.List;
 public class ProblemService {
 
     private final ProblemRepository problemRepository;
+    private final CategoryRepository categoryRepository;
 
-    public ProblemService(ProblemRepository problemRepository) {
+    public ProblemService(ProblemRepository problemRepository,
+                          CategoryRepository categoryRepository) {
+
         this.problemRepository = problemRepository;
+        this.categoryRepository = categoryRepository;
     }
 
-    public Problem saveProblem(Problem problem) {
+    public Problem saveProblem(Problem problem, Long categoryId) {
+
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Category not found with id: " + categoryId
+                        )
+                );
+
+        problem.setCategory(category);
 
         problem.setStatus(ProblemStatus.OPEN);
         problem.setPriority(Priority.MEDIUM);
@@ -41,34 +57,33 @@ public class ProblemService {
                 .toList();
     }
 
-    private ProblemResponse convertToResponse(Problem problem) {
+    public ProblemResponse findProblemById(Long id) {
 
-        return new ProblemResponse(
-                problem.getId(),
-                problem.getTitle(),
-                problem.getDescription(),
-                problem.getSeverity(),
-                problem.getStatus(),
-                problem.getPriority(),
-                problem.getLocation(),
-                problem.getLatitude(),
-                problem.getLongitude(),
-                problem.getCreatedAt(),
-                problem.getUpdatedAt()
-        );
+        Problem problem = problemRepository.findById(id)
+                .orElseThrow(() ->
+                        new ProblemNotFoundException(
+                                "Problem not found with id: " + id
+                        )
+                );
+
+        return convertToResponse(problem);
     }
+
     public Problem changeStatus(Long id, ProblemStatus newStatus) {
 
         Problem problem = problemRepository.findById(id)
                 .orElseThrow(() ->
-                        new ProblemNotFoundException("Problem not found with id: " + id)
+                        new ProblemNotFoundException(
+                                "Problem not found with id: " + id
+                        )
                 );
 
         ProblemStatus currentStatus = problem.getStatus();
 
         if (!isValidStatusTransition(currentStatus, newStatus)) {
             throw new InvalidStatusTransitionException(
-                    "Invalid status transition: " + currentStatus + " → " + newStatus
+                    "Invalid status transition: "
+                            + currentStatus + " → " + newStatus
             );
         }
 
@@ -84,6 +99,7 @@ public class ProblemService {
 
         if (currentStatus == ProblemStatus.OPEN
                 && (newStatus == ProblemStatus.VALIDATED
+                || newStatus == ProblemStatus.ASSIGNED
                 || newStatus == ProblemStatus.REJECTED
                 || newStatus == ProblemStatus.DUPLICATE)) {
             return true;
@@ -123,15 +139,31 @@ public class ProblemService {
 
         return false;
     }
-    public ProblemResponse findProblemById(Long id) {
 
-        Problem problem = problemRepository.findById(id)
-                .orElseThrow(() ->
-                        new ProblemNotFoundException(
-                                "Problem not found with id: " + id
-                        )
-                );
+    public ProblemResponse convertToResponse(Problem problem) {
 
-        return convertToResponse(problem);
+        CategoryResponse categoryResponse = null;
+
+        if (problem.getCategory() != null) {
+            categoryResponse = new CategoryResponse(
+                    problem.getCategory().getId(),
+                    problem.getCategory().getName()
+            );
+        }
+
+        return new ProblemResponse(
+                problem.getId(),
+                problem.getTitle(),
+                problem.getDescription(),
+                problem.getSeverity(),
+                problem.getStatus(),
+                problem.getPriority(),
+                categoryResponse,
+                problem.getLocation(),
+                problem.getLatitude(),
+                problem.getLongitude(),
+                problem.getCreatedAt(),
+                problem.getUpdatedAt()
+        );
     }
-}
+    }

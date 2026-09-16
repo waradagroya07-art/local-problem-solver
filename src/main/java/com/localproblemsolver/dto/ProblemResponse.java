@@ -14,21 +14,20 @@ public class ProblemResponse {
     private Severity severity;
     private ProblemStatus status;
     private Priority priority;
+    private CategoryResponse category;
     private String location;
     private Double latitude;
     private Double longitude;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    // No-argument constructor
     public ProblemResponse() {
     }
 
-    // Parameterized constructor
     public ProblemResponse(Long id, String title, String description,
                            Severity severity, ProblemStatus status,
-                           Priority priority, String location,
-                           Double latitude, Double longitude,
+                           Priority priority, CategoryResponse category,
+                           String location, Double latitude, Double longitude,
                            LocalDateTime createdAt,
                            LocalDateTime updatedAt) {
 
@@ -38,14 +37,13 @@ public class ProblemResponse {
         this.severity = severity;
         this.status = status;
         this.priority = priority;
+        this.category = category;
         this.location = location;
         this.latitude = latitude;
         this.longitude = longitude;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
-
-    // Getters and Setters
 
     public Long getId() {
         return id;
@@ -93,6 +91,14 @@ public class ProblemResponse {
 
     public void setPriority(Priority priority) {
         this.priority = priority;
+    }
+
+    public CategoryResponse getCategory() {
+        return category;
+    }
+
+    public void setCategory(CategoryResponse category) {
+        this.category = category;
     }
 
     public String getLocation() {
