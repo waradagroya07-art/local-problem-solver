@@ -1,6 +1,6 @@
 package com.localproblemsolver.service;
 
-import com.localproblemsolver.dto.ProblemRequest;
+import com.localproblemsolver.dto.CategoryResponse;
 import com.localproblemsolver.dto.ProblemResponse;
 import com.localproblemsolver.entity.Category;
 import com.localproblemsolver.entity.Priority;
@@ -11,7 +11,7 @@ import com.localproblemsolver.exception.ProblemNotFoundException;
 import com.localproblemsolver.repository.CategoryRepository;
 import com.localproblemsolver.repository.ProblemRepository;
 import org.springframework.stereotype.Service;
-import com.localproblemsolver.dto.CategoryResponse;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -20,31 +20,46 @@ public class ProblemService {
 
     private final ProblemRepository problemRepository;
     private final CategoryRepository categoryRepository;
+    private final PriorityCalculationService priorityCalculationService;
 
-    public ProblemService(ProblemRepository problemRepository,
-                          CategoryRepository categoryRepository) {
+    public ProblemService(
+            ProblemRepository problemRepository,
+            CategoryRepository categoryRepository,
+            PriorityCalculationService priorityCalculationService) {
 
         this.problemRepository = problemRepository;
         this.categoryRepository = categoryRepository;
+        this.priorityCalculationService = priorityCalculationService;
     }
 
     public Problem saveProblem(Problem problem, Long categoryId) {
 
-        Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Category not found with id: " + categoryId
-                        )
-                );
+        if (categoryId != null) {
 
-        problem.setCategory(category);
+            Category category = categoryRepository.findById(categoryId)
+                    .orElseThrow(() ->
+                            new IllegalArgumentException(
+                                    "Category not found with id: " + categoryId
+                            )
+                    );
+
+            problem.setCategory(category);
+        }
 
         problem.setStatus(ProblemStatus.OPEN);
-        problem.setPriority(Priority.MEDIUM);
 
         LocalDateTime now = LocalDateTime.now();
+
         problem.setCreatedAt(now);
         problem.setUpdatedAt(now);
+
+        /*
+         * Calculate priority after setting the creation time.
+         */
+        Priority priority =
+                priorityCalculationService.calculatePriority(problem);
+
+        problem.setPriority(priority);
 
         return problemRepository.save(problem);
     }
@@ -69,7 +84,9 @@ public class ProblemService {
         return convertToResponse(problem);
     }
 
-    public Problem changeStatus(Long id, ProblemStatus newStatus) {
+    public Problem changeStatus(
+            Long id,
+            ProblemStatus newStatus) {
 
         Problem problem = problemRepository.findById(id)
                 .orElseThrow(() ->
@@ -80,10 +97,15 @@ public class ProblemService {
 
         ProblemStatus currentStatus = problem.getStatus();
 
-        if (!isValidStatusTransition(currentStatus, newStatus)) {
+        if (!isValidStatusTransition(
+                currentStatus,
+                newStatus)) {
+
             throw new InvalidStatusTransitionException(
                     "Invalid status transition: "
-                            + currentStatus + " → " + newStatus
+                            + currentStatus
+                            + " → "
+                            + newStatus
             );
         }
 
@@ -102,6 +124,7 @@ public class ProblemService {
                 || newStatus == ProblemStatus.ASSIGNED
                 || newStatus == ProblemStatus.REJECTED
                 || newStatus == ProblemStatus.DUPLICATE)) {
+
             return true;
         }
 
@@ -109,31 +132,37 @@ public class ProblemService {
                 && (newStatus == ProblemStatus.ASSIGNED
                 || newStatus == ProblemStatus.REJECTED
                 || newStatus == ProblemStatus.DUPLICATE)) {
+
             return true;
         }
 
         if (currentStatus == ProblemStatus.ASSIGNED
                 && newStatus == ProblemStatus.IN_PROGRESS) {
+
             return true;
         }
 
         if (currentStatus == ProblemStatus.IN_PROGRESS
                 && newStatus == ProblemStatus.RESOLVED) {
+
             return true;
         }
 
         if (currentStatus == ProblemStatus.RESOLVED
                 && newStatus == ProblemStatus.CLOSED) {
+
             return true;
         }
 
         if (currentStatus == ProblemStatus.CLOSED
                 && newStatus == ProblemStatus.REOPENED) {
+
             return true;
         }
 
         if (currentStatus == ProblemStatus.REOPENED
                 && newStatus == ProblemStatus.IN_PROGRESS) {
+
             return true;
         }
 
@@ -145,6 +174,7 @@ public class ProblemService {
         CategoryResponse categoryResponse = null;
 
         if (problem.getCategory() != null) {
+
             categoryResponse = new CategoryResponse(
                     problem.getCategory().getId(),
                     problem.getCategory().getName()
@@ -166,4 +196,4 @@ public class ProblemService {
                 problem.getUpdatedAt()
         );
     }
-    }
+}
