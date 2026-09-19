@@ -21,15 +21,26 @@ public class ProblemResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // ID of the original problem if this problem is a duplicate
+    private Long duplicateOfProblemId;
+
     public ProblemResponse() {
     }
 
-    public ProblemResponse(Long id, String title, String description,
-                           Severity severity, ProblemStatus status,
-                           Priority priority, CategoryResponse category,
-                           String location, Double latitude, Double longitude,
-                           LocalDateTime createdAt,
-                           LocalDateTime updatedAt) {
+    public ProblemResponse(
+            Long id,
+            String title,
+            String description,
+            Severity severity,
+            ProblemStatus status,
+            Priority priority,
+            CategoryResponse category,
+            String location,
+            Double latitude,
+            Double longitude,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt,
+            Long duplicateOfProblemId) {
 
         this.id = id;
         this.title = title;
@@ -43,6 +54,7 @@ public class ProblemResponse {
         this.longitude = longitude;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.duplicateOfProblemId = duplicateOfProblemId;
     }
 
     public Long getId() {
@@ -139,5 +151,13 @@ public class ProblemResponse {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Long getDuplicateOfProblemId() {
+        return duplicateOfProblemId;
+    }
+
+    public void setDuplicateOfProblemId(Long duplicateOfProblemId) {
+        this.duplicateOfProblemId = duplicateOfProblemId;
     }
 }

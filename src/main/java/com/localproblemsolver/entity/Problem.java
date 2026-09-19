@@ -55,9 +55,19 @@ public class Problem {
     @Enumerated(EnumType.STRING)
     private Priority priority;
 
+    // Many problems can belong to one category
     @ManyToOne
     @JoinColumn(name = "category_id")
     private Category category;
+
+    // Many problems can belong to one user
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @ManyToOne
+    @JoinColumn(name = "duplicate_of_id")
+    private Problem duplicateOf;
 
     private String location;
 
@@ -69,7 +79,10 @@ public class Problem {
 
     private LocalDateTime updatedAt;
 
+
+    // =========================
     // Getters and Setters
+    // =========================
 
     public Long getId() {
         return id;
@@ -127,6 +140,14 @@ public class Problem {
         this.category = category;
     }
 
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
     public String getLocation() {
         return location;
     }
@@ -165,5 +186,12 @@ public class Problem {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+    public Problem getDuplicateOf() {
+        return duplicateOf;
+    }
+
+    public void setDuplicateOf(Problem duplicateOf) {
+        this.duplicateOf = duplicateOf;
     }
 }

@@ -26,7 +26,6 @@ public class AuthService {
 
     public UserResponse register(RegisterRequest request) {
 
-        // Check whether the email is already registered
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -34,11 +33,9 @@ public class AuthService {
             );
         }
 
-        // Hash the password before storing it
         String hashedPassword =
                 passwordEncoder.encode(request.getPassword());
 
-        // Create User entity
         User user = new User();
 
         user.setName(request.getName());
@@ -48,10 +45,8 @@ public class AuthService {
         // Normal registration creates a Citizen
         user.setRole(Role.CITIZEN);
 
-        // Save user to database
         User savedUser = userRepository.save(user);
 
-        // Return response without password
         return new UserResponse(
                 savedUser.getId(),
                 savedUser.getName(),

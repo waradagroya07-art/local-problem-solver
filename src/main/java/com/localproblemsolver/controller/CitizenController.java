@@ -2,51 +2,45 @@ package com.localproblemsolver.controller;
 
 import com.localproblemsolver.dto.ProblemResponse;
 import com.localproblemsolver.entity.Problem;
-import com.localproblemsolver.entity.ProblemStatus;
 import com.localproblemsolver.service.ProblemService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/authority")
-@PreAuthorize("hasRole('AUTHORITY')")
-public class AuthorityController {
+@RequestMapping("/api/citizen")
+@PreAuthorize("hasRole('CITIZEN')")
+public class CitizenController {
 
     private final ProblemService problemService;
 
-    public AuthorityController(ProblemService problemService) {
+    public CitizenController(ProblemService problemService) {
         this.problemService = problemService;
     }
 
-    @PatchMapping("/problems/{id}/start")
-    public ProblemResponse startProblem(
+    @PatchMapping("/problems/{id}/confirm")
+    public ProblemResponse confirmProblem(
             @PathVariable Long id,
             Authentication authentication) {
 
         String userEmail = authentication.getName();
 
-        Problem problem = problemService.changeStatus(
-                id,
-                ProblemStatus.IN_PROGRESS,
-                userEmail
-        );
+        Problem problem =
+                problemService.confirmProblem(id, userEmail);
 
         return problemService.convertToResponse(problem);
     }
 
-    @PatchMapping("/problems/{id}/resolve")
-    public ProblemResponse resolveProblem(
+
+    @PatchMapping("/problems/{id}/reopen")
+    public ProblemResponse reopenProblem(
             @PathVariable Long id,
             Authentication authentication) {
 
         String userEmail = authentication.getName();
 
-        Problem problem = problemService.changeStatus(
-                id,
-                ProblemStatus.RESOLVED,
-                userEmail
-        );
+        Problem problem =
+                problemService.reopenProblem(id, userEmail);
 
         return problemService.convertToResponse(problem);
     }
