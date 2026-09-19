@@ -2,10 +2,13 @@ package com.localproblemsolver.controller;
 
 import com.localproblemsolver.dto.AssignmentResponse;
 import com.localproblemsolver.service.AssignmentService;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/assignments")
+@PreAuthorize("hasRole('MODERATOR')")
 public class AssignmentController {
 
     private final AssignmentService assignmentService;
@@ -18,9 +21,15 @@ public class AssignmentController {
 
     @PostMapping("/problems/{problemId}")
     public AssignmentResponse assignProblem(
-            @PathVariable Long problemId) {
+            @PathVariable Long problemId,
+            Authentication authentication) {
 
-        return assignmentService.assignProblem(problemId);
+        String userEmail = authentication.getName();
+
+        return assignmentService.assignProblem(
+                problemId,
+                userEmail
+        );
     }
 
     @GetMapping("/problems/{problemId}")

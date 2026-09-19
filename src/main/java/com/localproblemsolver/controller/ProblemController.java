@@ -2,16 +2,12 @@ package com.localproblemsolver.controller;
 
 import com.localproblemsolver.dto.ProblemRequest;
 import com.localproblemsolver.dto.ProblemResponse;
-import com.localproblemsolver.dto.StatusUpdateRequest;
 import com.localproblemsolver.entity.Problem;
 import com.localproblemsolver.service.ProblemService;
 import jakarta.validation.Valid;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -24,14 +20,11 @@ public class ProblemController {
         this.problemService = problemService;
     }
 
-    @GetMapping("/api/problems/test")
-    public String test() {
-        return "Problem Controller is working!";
-    }
-
     @PostMapping("/api/problems")
+    @PreAuthorize("hasRole('CITIZEN')")
     public ProblemResponse createProblem(
-            @Valid @RequestBody ProblemRequest request) {
+            @Valid @RequestBody ProblemRequest request,
+            Authentication authentication) {
 
         Problem problem = new Problem();
 
@@ -42,32 +35,46 @@ public class ProblemController {
         problem.setLatitude(request.getLatitude());
         problem.setLongitude(request.getLongitude());
 
-        Problem savedProblem = problemService.saveProblem(
-                problem,
-                request.getCategoryId()
-        );
+        String userEmail = authentication.getName();
+
+        Problem savedProblem =
+                problemService.saveProblem(
+                        problem,
+                        request.getCategoryId(),
+                        userEmail
+                );
 
         return problemService.convertToResponse(savedProblem);
     }
 
     @GetMapping("/api/problems")
+    @PreAuthorize("isAuthenticated()")
     public List<ProblemResponse> getAllProblems() {
+
         return problemService.findAllProblems();
     }
 
     @GetMapping("/api/problems/{id}")
-    public ProblemResponse getProblemById(@PathVariable Long id) {
+    @PreAuthorize("isAuthenticated()")
+    public ProblemResponse getProblemById(
+            @PathVariable Long id) {
+
         return problemService.findProblemById(id);
     }
 
     @PatchMapping("/api/problems/{id}/status")
+    @PreAuthorize("hasAnyRole('MODERATOR', 'AUTHORITY', 'SUPER_ADMIN')")
     public ProblemResponse changeStatus(
             @PathVariable Long id,
-            @Valid @RequestBody StatusUpdateRequest request) {
+            @Valid @RequestBody com.localproblemsolver.dto.StatusUpdateRequest request,
+            Authentication authentication) {
+
+        String userEmail = authentication.getName();
 
         Problem problem = problemService.changeStatus(
                 id,
-                request.getStatus()
+                request.getStatus(),
+                userEmail
         );
 
         return problemService.convertToResponse(problem);

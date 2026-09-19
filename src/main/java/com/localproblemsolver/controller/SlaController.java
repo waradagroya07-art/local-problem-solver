@@ -2,6 +2,7 @@ package com.localproblemsolver.controller;
 
 import com.localproblemsolver.dto.SlaResponse;
 import com.localproblemsolver.service.SlaService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,6 +18,7 @@ public class SlaController {
     }
 
     @PostMapping("/problems/{problemId}")
+    @PreAuthorize("hasAnyRole('MODERATOR', 'SUPER_ADMIN')")
     public SlaResponse createSla(
             @PathVariable Long problemId) {
 
@@ -24,6 +26,7 @@ public class SlaController {
     }
 
     @GetMapping("/problems/{problemId}")
+    @PreAuthorize("isAuthenticated()")
     public SlaResponse getSla(
             @PathVariable Long problemId) {
 
@@ -31,6 +34,7 @@ public class SlaController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('MODERATOR', 'AUTHORITY', 'SUPER_ADMIN')")
     public List<SlaResponse> getAllSlas() {
 
         return slaService.getAllSlas();

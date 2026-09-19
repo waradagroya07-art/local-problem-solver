@@ -15,10 +15,6 @@ public class AuthController {
     public AuthController(AuthService authService) {
         this.authService = authService;
     }
-    @GetMapping("/test")
-    public String test() {
-        return "Auth Controller is working!";
-    }
 
     @PostMapping("/register")
     public UserResponse register(

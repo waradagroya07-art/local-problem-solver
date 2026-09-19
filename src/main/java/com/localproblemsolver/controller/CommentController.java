@@ -4,6 +4,7 @@ import com.localproblemsolver.dto.CommentRequest;
 import com.localproblemsolver.dto.CommentResponse;
 import com.localproblemsolver.service.CommentService;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class CommentController {
     }
 
     @PostMapping("/problems/{problemId}")
+    @PreAuthorize("isAuthenticated()")
     public CommentResponse addComment(
             @PathVariable Long problemId,
             @Valid @RequestBody CommentRequest request) {
@@ -27,6 +29,7 @@ public class CommentController {
     }
 
     @GetMapping("/problems/{problemId}")
+    @PreAuthorize("isAuthenticated()")
     public List<CommentResponse> getComments(
             @PathVariable Long problemId) {
 
