@@ -477,4 +477,29 @@ public class ProblemService {
                 ProblemStatus.DUPLICATE,
                 userEmail);
     }
+    public Problem updateCategory(
+            Long problemId,
+            Long categoryId) {
+
+        // Find the problem
+        Problem problem = problemRepository.findById(problemId)
+                .orElseThrow(() ->
+                        new ProblemNotFoundException(
+                                "Problem not found with id: " + problemId));
+
+        // Find the new category
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Category not found with id: " + categoryId));
+
+        // Update category
+        problem.setCategory(category);
+
+        // Update modification time
+        problem.setUpdatedAt(LocalDateTime.now());
+
+        // Save updated problem
+        return problemRepository.save(problem);
+    }
 }
