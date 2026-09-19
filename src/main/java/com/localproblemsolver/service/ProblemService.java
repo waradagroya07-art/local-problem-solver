@@ -20,7 +20,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
-
+import com.localproblemsolver.entity.Role;
+import com.localproblemsolver.repository.AssignmentRepository;
 @Service
 public class ProblemService {
 
@@ -29,19 +30,21 @@ public class ProblemService {
     private final UserRepository userRepository;
     private final StatusHistoryRepository statusHistoryRepository;
     private final PriorityCalculationService priorityCalculationService;
-
+    private final AssignmentRepository assignmentRepository;
     public ProblemService(
             ProblemRepository problemRepository,
             CategoryRepository categoryRepository,
             UserRepository userRepository,
             StatusHistoryRepository statusHistoryRepository,
-            PriorityCalculationService priorityCalculationService) {
+            PriorityCalculationService priorityCalculationService,
+            AssignmentRepository assignmentRepository) {
 
         this.problemRepository = problemRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
         this.statusHistoryRepository = statusHistoryRepository;
         this.priorityCalculationService = priorityCalculationService;
+        this.assignmentRepository = assignmentRepository;
     }
 
 
@@ -166,6 +169,9 @@ public class ProblemService {
                                 "Authenticated user not found"
                         )
                 );
+        if (changedBy.getRole() == Role.AUTHORITY) {
+            verifyAuthorityAccess(problem, changedBy);
+        }
 
         // Update problem status
         problem.setStatus(newStatus);
@@ -501,5 +507,31 @@ public class ProblemService {
 
         // Save updated problem
         return problemRepository.save(problem);
+    }
+    private void verifyAuthorityAccess(
+            Problem problem,
+            User user) {
+
+        if (user.getAuthority() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Authority is not linked to a user"
+            );
+        }
+
+        Long authorityId = user.getAuthority().getId();
+
+        boolean assignedToAuthority =
+                assignmentRepository.existsByProblemIdAndAuthorityId(
+                        problem.getId(),
+                        authorityId
+                );
+
+        if (!assignedToAuthority) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "This problem is not assigned to your authority"
+            );
+        }
     }
 }

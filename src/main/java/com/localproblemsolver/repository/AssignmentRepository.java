@@ -9,4 +9,8 @@ public interface AssignmentRepository
         extends JpaRepository<Assignment, Long> {
 
     Optional<Assignment> findByProblemId(Long problemId);
+
+    boolean existsByProblemIdAndAuthorityId(
+            Long problemId,
+            Long authorityId);
 }

@@ -23,10 +23,26 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    /*
+     * An AUTHORITY user can be linked to the
+     * Authority organization they represent.
+     *
+     * This is nullable because CITIZEN, MODERATOR
+     * and SUPER_ADMIN users do not need an Authority.
+     */
+    @ManyToOne
+    @JoinColumn(name = "authority_id")
+    private Authority authority;
+
     public User() {
     }
 
-    public User(String name, String email, String password, Role role) {
+    public User(
+            String name,
+            String email,
+            String password,
+            Role role) {
+
         this.name = name;
         this.email = email;
         this.password = password;
@@ -71,5 +87,13 @@ public class User {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public Authority getAuthority() {
+        return authority;
+    }
+
+    public void setAuthority(Authority authority) {
+        this.authority = authority;
     }
 }
