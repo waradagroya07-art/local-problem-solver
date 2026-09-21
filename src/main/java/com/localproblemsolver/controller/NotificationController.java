@@ -4,6 +4,7 @@ import com.localproblemsolver.dto.NotificationResponse;
 import com.localproblemsolver.entity.NotificationType;
 import com.localproblemsolver.service.NotificationService;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,34 +25,53 @@ public class NotificationController {
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public NotificationResponse createNotification(
             @RequestParam String message,
-            @RequestParam NotificationType type) {
+            @RequestParam NotificationType type,
+            Authentication authentication) {
+
+        String userEmail = authentication.getName();
 
         return notificationService.createNotification(
                 message,
-                type
+                type,
+                userEmail
         );
     }
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public List<NotificationResponse> getAllNotifications() {
+    public List<NotificationResponse> getMyNotifications(
+            Authentication authentication) {
 
-        return notificationService.getAllNotifications();
+        String userEmail = authentication.getName();
+
+        return notificationService.getMyNotifications(userEmail);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public NotificationResponse getNotification(
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            Authentication authentication) {
 
-        return notificationService.getNotification(id);
+        String userEmail = authentication.getName();
+
+        return notificationService.getNotification(
+                id,
+                userEmail
+        );
     }
 
     @PatchMapping("/{id}/read")
     @PreAuthorize("isAuthenticated()")
     public NotificationResponse markAsRead(
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            Authentication authentication) {
 
-        return notificationService.markAsRead(id);
+        String userEmail = authentication.getName();
+
+        return notificationService.markAsRead(
+                id,
+                userEmail
+        );
     }
 }

@@ -11,6 +11,7 @@ public class NotificationResponse {
     private NotificationType type;
     private boolean read;
     private LocalDateTime createdAt;
+    private Long userId;
 
     public NotificationResponse() {
     }
@@ -20,13 +21,15 @@ public class NotificationResponse {
             String message,
             NotificationType type,
             boolean read,
-            LocalDateTime createdAt) {
+            LocalDateTime createdAt,
+            Long userId) {
 
         this.id = id;
         this.message = message;
         this.type = type;
         this.read = read;
         this.createdAt = createdAt;
+        this.userId = userId;
     }
 
     public Long getId() {
@@ -67,5 +70,13 @@ public class NotificationResponse {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 }

@@ -3,25 +3,28 @@ package com.localproblemsolver.service;
 import com.localproblemsolver.dto.CategoryResponse;
 import com.localproblemsolver.dto.ProblemResponse;
 import com.localproblemsolver.entity.Category;
+import com.localproblemsolver.entity.NotificationType;
 import com.localproblemsolver.entity.Priority;
 import com.localproblemsolver.entity.Problem;
 import com.localproblemsolver.entity.ProblemStatus;
+import com.localproblemsolver.entity.Role;
 import com.localproblemsolver.entity.StatusHistory;
 import com.localproblemsolver.entity.User;
 import com.localproblemsolver.exception.InvalidStatusTransitionException;
 import com.localproblemsolver.exception.ProblemNotFoundException;
+import com.localproblemsolver.repository.AssignmentRepository;
 import com.localproblemsolver.repository.CategoryRepository;
 import com.localproblemsolver.repository.ProblemRepository;
 import com.localproblemsolver.repository.StatusHistoryRepository;
 import com.localproblemsolver.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.time.LocalDateTime;
 import java.util.List;
-import com.localproblemsolver.entity.Role;
-import com.localproblemsolver.repository.AssignmentRepository;
+
 @Service
 public class ProblemService {
 
@@ -31,13 +34,16 @@ public class ProblemService {
     private final StatusHistoryRepository statusHistoryRepository;
     private final PriorityCalculationService priorityCalculationService;
     private final AssignmentRepository assignmentRepository;
+    private final NotificationService notificationService;
+
     public ProblemService(
             ProblemRepository problemRepository,
             CategoryRepository categoryRepository,
             UserRepository userRepository,
             StatusHistoryRepository statusHistoryRepository,
             PriorityCalculationService priorityCalculationService,
-            AssignmentRepository assignmentRepository) {
+            AssignmentRepository assignmentRepository,
+            NotificationService notificationService) {
 
         this.problemRepository = problemRepository;
         this.categoryRepository = categoryRepository;
@@ -45,6 +51,7 @@ public class ProblemService {
         this.statusHistoryRepository = statusHistoryRepository;
         this.priorityCalculationService = priorityCalculationService;
         this.assignmentRepository = assignmentRepository;
+        this.notificationService = notificationService;
     }
 
 
@@ -95,7 +102,17 @@ public class ProblemService {
 
         problem.setPriority(priority);
 
-        return problemRepository.save(problem);
+        // Save problem
+        Problem savedProblem = problemRepository.save(problem);
+
+        // Create notification for the citizen
+        notificationService.createNotification(
+                "Your problem has been reported successfully.",
+                NotificationType.PROBLEM_CREATED,
+                userEmail
+        );
+
+        return savedProblem;
     }
 
 
@@ -133,6 +150,7 @@ public class ProblemService {
     // CHANGE STATUS
     // =========================================================
 
+    @Transactional
     public Problem changeStatus(
             Long id,
             ProblemStatus newStatus,
@@ -169,6 +187,9 @@ public class ProblemService {
                                 "Authenticated user not found"
                         )
                 );
+
+        // If an authority changes the status,
+        // verify that the problem belongs to that authority.
         if (changedBy.getRole() == Role.AUTHORITY) {
             verifyAuthorityAccess(problem, changedBy);
         }
@@ -191,6 +212,22 @@ public class ProblemService {
         statusHistory.setChangedAt(LocalDateTime.now());
 
         statusHistoryRepository.save(statusHistory);
+
+        // =====================================================
+        // CREATE STATUS CHANGED NOTIFICATION
+        // =====================================================
+
+        notificationService.createNotification(
+                "The status of your problem #"
+                        + id
+                        + " has been changed from "
+                        + oldStatus
+                        + " to "
+                        + newStatus
+                        + ".",
+                NotificationType.STATUS_CHANGED,
+                problem.getUser().getEmail()
+        );
 
         return savedProblem;
     }
@@ -433,6 +470,12 @@ public class ProblemService {
                         : null
         );
     }
+
+
+    // =========================================================
+    // MARK PROBLEM AS DUPLICATE
+    // =========================================================
+
     @Transactional
     public Problem markAsDuplicate(
             Long duplicateProblemId,
@@ -440,35 +483,49 @@ public class ProblemService {
             String userEmail) {
 
         // Find the duplicate problem
-        Problem duplicateProblem = problemRepository.findById(duplicateProblemId)
-                .orElseThrow(() ->
-                        new ProblemNotFoundException(
-                                "Problem not found with id: " + duplicateProblemId));
+        Problem duplicateProblem =
+                problemRepository.findById(duplicateProblemId)
+                        .orElseThrow(() ->
+                                new ProblemNotFoundException(
+                                        "Problem not found with id: "
+                                                + duplicateProblemId
+                                )
+                        );
 
         // Find the original problem
-        Problem originalProblem = problemRepository.findById(originalProblemId)
-                .orElseThrow(() ->
-                        new ProblemNotFoundException(
-                                "Original problem not found with id: " + originalProblemId));
+        Problem originalProblem =
+                problemRepository.findById(originalProblemId)
+                        .orElseThrow(() ->
+                                new ProblemNotFoundException(
+                                        "Original problem not found with id: "
+                                                + originalProblemId
+                                )
+                        );
 
         // A problem cannot be a duplicate of itself
         if (duplicateProblemId.equals(originalProblemId)) {
+
             throw new IllegalArgumentException(
-                    "A problem cannot be a duplicate of itself");
+                    "A problem cannot be a duplicate of itself"
+            );
         }
 
         // Original problem should not already be a duplicate
         if (originalProblem.getStatus() == ProblemStatus.DUPLICATE) {
+
             throw new IllegalArgumentException(
-                    "The original problem is already marked as duplicate");
+                    "The original problem is already marked as duplicate"
+            );
         }
 
         // Duplicate can only come from OPEN or VALIDATED
         if (duplicateProblem.getStatus() != ProblemStatus.OPEN
-                && duplicateProblem.getStatus() != ProblemStatus.VALIDATED) {
+                && duplicateProblem.getStatus()
+                != ProblemStatus.VALIDATED) {
 
             throw new IllegalArgumentException(
-                    "Only OPEN or VALIDATED problems can be marked as duplicate");
+                    "Only OPEN or VALIDATED problems can be marked as duplicate"
+            );
         }
 
         // Link duplicate problem to the original problem
@@ -481,8 +538,15 @@ public class ProblemService {
         return changeStatus(
                 duplicateProblemId,
                 ProblemStatus.DUPLICATE,
-                userEmail);
+                userEmail
+        );
     }
+
+
+    // =========================================================
+    // UPDATE CATEGORY
+    // =========================================================
+
     public Problem updateCategory(
             Long problemId,
             Long categoryId) {
@@ -491,13 +555,19 @@ public class ProblemService {
         Problem problem = problemRepository.findById(problemId)
                 .orElseThrow(() ->
                         new ProblemNotFoundException(
-                                "Problem not found with id: " + problemId));
+                                "Problem not found with id: "
+                                        + problemId
+                        )
+                );
 
         // Find the new category
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() ->
                         new IllegalArgumentException(
-                                "Category not found with id: " + categoryId));
+                                "Category not found with id: "
+                                        + categoryId
+                        )
+                );
 
         // Update category
         problem.setCategory(category);
@@ -508,26 +578,36 @@ public class ProblemService {
         // Save updated problem
         return problemRepository.save(problem);
     }
+
+
+    // =========================================================
+    // VERIFY AUTHORITY ACCESS
+    // =========================================================
+
     private void verifyAuthorityAccess(
             Problem problem,
             User user) {
 
         if (user.getAuthority() == null) {
+
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "Authority is not linked to a user"
             );
         }
 
-        Long authorityId = user.getAuthority().getId();
+        Long authorityId =
+                user.getAuthority().getId();
 
         boolean assignedToAuthority =
-                assignmentRepository.existsByProblemIdAndAuthorityId(
-                        problem.getId(),
-                        authorityId
-                );
+                assignmentRepository
+                        .existsByProblemIdAndAuthorityId(
+                                problem.getId(),
+                                authorityId
+                        );
 
         if (!assignedToAuthority) {
+
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "This problem is not assigned to your authority"

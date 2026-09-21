@@ -5,11 +5,14 @@ import com.localproblemsolver.dto.AuthorityResponse;
 import com.localproblemsolver.dto.CategoryResponse;
 import com.localproblemsolver.entity.Assignment;
 import com.localproblemsolver.entity.Authority;
+import com.localproblemsolver.entity.NotificationType;
 import com.localproblemsolver.entity.Problem;
 import com.localproblemsolver.entity.ProblemStatus;
+import com.localproblemsolver.entity.User;
 import com.localproblemsolver.repository.AssignmentRepository;
 import com.localproblemsolver.repository.AuthorityRepository;
 import com.localproblemsolver.repository.ProblemRepository;
+import com.localproblemsolver.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,18 +27,24 @@ public class AssignmentService {
     private final AssignmentRepository assignmentRepository;
     private final ProblemRepository problemRepository;
     private final AuthorityRepository authorityRepository;
+    private final UserRepository userRepository;
     private final ProblemService problemService;
+    private final NotificationService notificationService;
 
     public AssignmentService(
             AssignmentRepository assignmentRepository,
             ProblemRepository problemRepository,
             AuthorityRepository authorityRepository,
-            ProblemService problemService) {
+            UserRepository userRepository,
+            ProblemService problemService,
+            NotificationService notificationService) {
 
         this.assignmentRepository = assignmentRepository;
         this.problemRepository = problemRepository;
         this.authorityRepository = authorityRepository;
+        this.userRepository = userRepository;
         this.problemService = problemService;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -130,9 +139,26 @@ public class AssignmentService {
                 userEmail
         );
 
+        // 9. Find the user linked to the selected authority
+        User authorityUser = userRepository
+                .findByAuthorityId(selectedAuthority.getId())
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "No user found for authority id: "
+                                        + selectedAuthority.getId()
+                        )
+                );
+
+        // 10. Create notification for the assigned authority
+        notificationService.createNotification(
+                "Problem #" + problemId + " has been assigned to your authority.",
+                NotificationType.PROBLEM_ASSIGNED,
+                authorityUser.getEmail()
+        );
+
         return convertToResponse(savedAssignment);
     }
-
 
     // =========================================================
     // GET ASSIGNMENT
@@ -152,7 +178,6 @@ public class AssignmentService {
 
         return convertToResponse(assignment);
     }
-
 
     // =========================================================
     // CONVERT ENTITY → RESPONSE DTO

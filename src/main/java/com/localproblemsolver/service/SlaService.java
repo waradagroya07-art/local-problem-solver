@@ -1,6 +1,7 @@
 package com.localproblemsolver.service;
 
 import com.localproblemsolver.dto.SlaResponse;
+import com.localproblemsolver.entity.NotificationType;
 import com.localproblemsolver.entity.Priority;
 import com.localproblemsolver.entity.Problem;
 import com.localproblemsolver.entity.Sla;
@@ -19,13 +20,16 @@ public class SlaService {
 
     private final SlaRepository slaRepository;
     private final ProblemRepository problemRepository;
+    private final NotificationService notificationService;
 
     public SlaService(
             SlaRepository slaRepository,
-            ProblemRepository problemRepository) {
+            ProblemRepository problemRepository,
+            NotificationService notificationService) {
 
         this.slaRepository = slaRepository;
         this.problemRepository = problemRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -60,7 +64,6 @@ public class SlaService {
                 );
 
         Sla sla = new Sla();
-
         sla.setProblem(problem);
         sla.setDeadline(deadline);
         sla.setBreached(false);
@@ -76,8 +79,7 @@ public class SlaService {
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
-                                "SLA not found for problem id: "
-                                        + problemId
+                                "SLA not found for problem id: " + problemId
                         )
                 );
 
@@ -121,14 +123,28 @@ public class SlaService {
         };
     }
 
+    @Transactional
     private void updateBreachStatus(Sla sla) {
 
         if (!sla.isBreached()
-                && LocalDateTime.now()
-                .isAfter(sla.getDeadline())) {
+                && LocalDateTime.now().isAfter(sla.getDeadline())) {
 
             sla.setBreached(true);
+
             slaRepository.save(sla);
+
+            // Notify the citizen who reported the problem
+            if (sla.getProblem().getUser() != null
+                    && sla.getProblem().getUser().getEmail() != null) {
+
+                notificationService.createNotification(
+                        "The SLA for your problem #"
+                                + sla.getProblem().getId()
+                                + " has been breached.",
+                        NotificationType.SLA_BREACHED,
+                        sla.getProblem().getUser().getEmail()
+                );
+            }
         }
     }
 

@@ -25,6 +25,10 @@ public class Notification {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
     public Notification() {
     }
 
@@ -32,12 +36,14 @@ public class Notification {
             String message,
             NotificationType type,
             boolean read,
-            LocalDateTime createdAt) {
+            LocalDateTime createdAt,
+            User user) {
 
         this.message = message;
         this.type = type;
         this.read = read;
         this.createdAt = createdAt;
+        this.user = user;
     }
 
     public Long getId() {
@@ -78,5 +84,13 @@ public class Notification {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 }

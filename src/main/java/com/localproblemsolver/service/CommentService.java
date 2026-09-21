@@ -3,6 +3,7 @@ package com.localproblemsolver.service;
 import com.localproblemsolver.dto.CommentRequest;
 import com.localproblemsolver.dto.CommentResponse;
 import com.localproblemsolver.entity.Comment;
+import com.localproblemsolver.entity.NotificationType;
 import com.localproblemsolver.entity.Problem;
 import com.localproblemsolver.repository.CommentRepository;
 import com.localproblemsolver.repository.ProblemRepository;
@@ -18,13 +19,16 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final ProblemRepository problemRepository;
+    private final NotificationService notificationService;
 
     public CommentService(
             CommentRepository commentRepository,
-            ProblemRepository problemRepository) {
+            ProblemRepository problemRepository,
+            NotificationService notificationService) {
 
         this.commentRepository = commentRepository;
         this.problemRepository = problemRepository;
+        this.notificationService = notificationService;
     }
 
     public CommentResponse addComment(
@@ -46,6 +50,17 @@ public class CommentService {
         comment.setCreatedAt(LocalDateTime.now());
 
         Comment savedComment = commentRepository.save(comment);
+
+        // Notify the citizen who reported the problem
+        if (problem.getUser() != null
+                && problem.getUser().getEmail() != null) {
+
+            notificationService.createNotification(
+                    "A new comment was added to your problem #" + problemId + ".",
+                    NotificationType.COMMENT_ADDED,
+                    problem.getUser().getEmail()
+            );
+        }
 
         return convertToResponse(savedComment);
     }
