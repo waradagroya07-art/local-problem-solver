@@ -10,6 +10,7 @@ import com.localproblemsolver.repository.AssignmentRepository;
 import com.localproblemsolver.repository.AttachmentRepository;
 import com.localproblemsolver.repository.ProblemRepository;
 import com.localproblemsolver.repository.UserRepository;
+
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
@@ -18,7 +19,10 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -51,6 +55,11 @@ public class AttachmentService {
             ".pdf"
     );
 
+
+    // =========================================================
+    // CONSTRUCTOR
+    // =========================================================
+
     public AttachmentService(
             AttachmentRepository attachmentRepository,
             ProblemRepository problemRepository,
@@ -62,6 +71,7 @@ public class AttachmentService {
         this.userRepository = userRepository;
         this.assignmentRepository = assignmentRepository;
     }
+
 
     // =========================================================
     // UPLOAD ATTACHMENT
@@ -76,7 +86,12 @@ public class AttachmentService {
 
         verifyAccess(problem, userEmail);
 
+        // -----------------------------------------------------
+        // Validate file
+        // -----------------------------------------------------
+
         if (file == null || file.isEmpty()) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "File is required"
@@ -84,13 +99,15 @@ public class AttachmentService {
         }
 
         if (file.getSize() > MAX_FILE_SIZE) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "File size must not exceed 5 MB"
             );
         }
 
-        String originalFileName = file.getOriginalFilename();
+        String originalFileName =
+                file.getOriginalFilename();
 
         if (originalFileName == null ||
                 originalFileName.isBlank()) {
@@ -101,28 +118,46 @@ public class AttachmentService {
             );
         }
 
-        String safeFileName = Paths.get(originalFileName)
-                .getFileName()
-                .toString();
+        // -----------------------------------------------------
+        // Make filename safe
+        // -----------------------------------------------------
+
+        String safeFileName =
+                Paths.get(originalFileName)
+                        .getFileName()
+                        .toString();
 
         String extension = "";
 
-        int lastDot = safeFileName.lastIndexOf('.');
+        int lastDot =
+                safeFileName.lastIndexOf('.');
 
         if (lastDot >= 0) {
-            extension = safeFileName
-                    .substring(lastDot)
-                    .toLowerCase();
+
+            extension =
+                    safeFileName
+                            .substring(lastDot)
+                            .toLowerCase();
         }
 
+        // -----------------------------------------------------
+        // Validate extension
+        // -----------------------------------------------------
+
         if (!ALLOWED_EXTENSIONS.contains(extension)) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Unsupported file type. Allowed types: JPG, JPEG, PNG, PDF"
             );
         }
 
-        String contentType = file.getContentType();
+        // -----------------------------------------------------
+        // Validate content type
+        // -----------------------------------------------------
+
+        String contentType =
+                file.getContentType();
 
         if (contentType == null ||
                 !ALLOWED_CONTENT_TYPES.contains(
@@ -134,19 +169,44 @@ public class AttachmentService {
             );
         }
 
+
+        /*
+         * Keep track of the physical file path.
+         *
+         * If database saving fails after the physical file
+         * has been created, we can delete the file.
+         */
+        Path filePath = null;
+
+
         try {
+
+            // -------------------------------------------------
+            // Create upload directory
+            // -------------------------------------------------
 
             Path uploadPath =
                     Paths.get(UPLOAD_DIRECTORY);
 
             Files.createDirectories(uploadPath);
 
+
+            // -------------------------------------------------
+            // Generate unique filename
+            // -------------------------------------------------
+
             String uniqueFileName =
                     UUID.randomUUID()
                             + "_" + safeFileName;
 
-            Path filePath =
+
+            filePath =
                     uploadPath.resolve(uniqueFileName);
+
+
+            // -------------------------------------------------
+            // Save physical file
+            // -------------------------------------------------
 
             Files.copy(
                     file.getInputStream(),
@@ -154,20 +214,81 @@ public class AttachmentService {
                     StandardCopyOption.REPLACE_EXISTING
             );
 
-            Attachment attachment = new Attachment();
+
+            // -------------------------------------------------
+            // Create Attachment entity
+            // -------------------------------------------------
+
+            Attachment attachment =
+                    new Attachment();
 
             attachment.setProblem(problem);
-            attachment.setFileName(safeFileName);
-            attachment.setFileType(contentType);
-            attachment.setFilePath(filePath.toString());
-            attachment.setUploadedAt(LocalDateTime.now());
+
+            attachment.setFileName(
+                    safeFileName
+            );
+
+            attachment.setFileType(
+                    contentType
+            );
+
+            attachment.setFilePath(
+                    filePath.toString()
+            );
+
+            attachment.setUploadedAt(
+                    LocalDateTime.now()
+            );
+
+
+            // -------------------------------------------------
+            // Save database record
+            // -------------------------------------------------
 
             Attachment savedAttachment =
-                    attachmentRepository.save(attachment);
+                    attachmentRepository.save(
+                            attachment
+                    );
 
-            return convertToResponse(savedAttachment);
 
-        } catch (IOException exception) {
+            // -------------------------------------------------
+            // Return response
+            // -------------------------------------------------
+
+            return convertToResponse(
+                    savedAttachment
+            );
+
+
+        } catch (Exception exception) {
+
+            /*
+             * IMPORTANT:
+             *
+             * If the physical file was successfully created
+             * but the database operation failed, delete the
+             * physical file.
+             *
+             * This prevents orphan files.
+             */
+
+            if (filePath != null) {
+
+                try {
+
+                    Files.deleteIfExists(
+                            filePath
+                    );
+
+                } catch (IOException cleanupException) {
+
+                    /*
+                     * Do not replace the original exception
+                     * with the cleanup exception.
+                     */
+                }
+            }
+
 
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
@@ -175,6 +296,7 @@ public class AttachmentService {
             );
         }
     }
+
 
     // =========================================================
     // GET ATTACHMENTS
@@ -184,9 +306,13 @@ public class AttachmentService {
             Long problemId,
             String userEmail) {
 
-        Problem problem = findProblem(problemId);
+        Problem problem =
+                findProblem(problemId);
 
-        verifyAccess(problem, userEmail);
+        verifyAccess(
+                problem,
+                userEmail
+        );
 
         return attachmentRepository
                 .findByProblemId(problemId)
@@ -194,6 +320,7 @@ public class AttachmentService {
                 .map(this::convertToResponse)
                 .toList();
     }
+
 
     // =========================================================
     // DOWNLOAD / VIEW ATTACHMENT
@@ -203,9 +330,14 @@ public class AttachmentService {
             Long attachmentId,
             String userEmail) {
 
+        // -----------------------------------------------------
         // 1. Find attachment
+        // -----------------------------------------------------
+
         Attachment attachment =
-                attachmentRepository.findById(attachmentId)
+                attachmentRepository.findById(
+                                attachmentId
+                        )
                         .orElseThrow(() ->
                                 new ResponseStatusException(
                                         HttpStatus.NOT_FOUND,
@@ -214,26 +346,49 @@ public class AttachmentService {
                                 )
                         );
 
-        // 2. Get the problem to which this attachment belongs
-        Problem problem = attachment.getProblem();
+
+        // -----------------------------------------------------
+        // 2. Get problem
+        // -----------------------------------------------------
+
+        Problem problem =
+                attachment.getProblem();
 
         if (problem == null) {
+
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
                     "Problem associated with attachment not found"
             );
         }
 
-        // 3. Verify user authorization
-        verifyAccess(problem, userEmail);
+
+        // -----------------------------------------------------
+        // 3. Verify authorization
+        // -----------------------------------------------------
+
+        verifyAccess(
+                problem,
+                userEmail
+        );
+
 
         try {
 
+            // -------------------------------------------------
             // 4. Get physical file path
-            Path filePath =
-                    Paths.get(attachment.getFilePath());
+            // -------------------------------------------------
 
-            // 5. Check whether file actually exists
+            Path filePath =
+                    Paths.get(
+                            attachment.getFilePath()
+                    );
+
+
+            // -------------------------------------------------
+            // 5. Check file exists
+            // -------------------------------------------------
+
             if (!Files.exists(filePath) ||
                     !Files.isRegularFile(filePath)) {
 
@@ -243,9 +398,20 @@ public class AttachmentService {
                 );
             }
 
-            // 6. Convert file into Spring Resource
+
+            // -------------------------------------------------
+            // 6. Convert to Spring Resource
+            // -------------------------------------------------
+
             Resource resource =
-                    new UrlResource(filePath.toUri());
+                    new UrlResource(
+                            filePath.toUri()
+                    );
+
+
+            // -------------------------------------------------
+            // 7. Check resource
+            // -------------------------------------------------
 
             if (!resource.exists() ||
                     !resource.isReadable()) {
@@ -256,7 +422,9 @@ public class AttachmentService {
                 );
             }
 
+
             return resource;
+
 
         } catch (IOException exception) {
 
@@ -267,20 +435,25 @@ public class AttachmentService {
         }
     }
 
+
     // =========================================================
     // FIND PROBLEM
     // =========================================================
 
-    private Problem findProblem(Long problemId) {
+    private Problem findProblem(
+            Long problemId) {
 
-        return problemRepository.findById(problemId)
+        return problemRepository
+                .findById(problemId)
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
-                                "Problem not found with id: " + problemId
+                                "Problem not found with id: "
+                                        + problemId
                         )
                 );
     }
+
 
     // =========================================================
     // VERIFY USER ACCESS
@@ -290,27 +463,45 @@ public class AttachmentService {
             Problem problem,
             String userEmail) {
 
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.UNAUTHORIZED,
-                                "Authenticated user not found"
-                        )
-                );
+        User user =
+                userRepository
+                        .findByEmail(userEmail)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.UNAUTHORIZED,
+                                        "Authenticated user not found"
+                                )
+                        );
 
-        Role role = user.getRole();
 
+        Role role =
+                user.getRole();
+
+
+        // =====================================================
         // SUPER ADMIN
+        // =====================================================
+
         if (role == Role.SUPER_ADMIN) {
+
             return;
         }
 
+
+        // =====================================================
         // MODERATOR
+        // =====================================================
+
         if (role == Role.MODERATOR) {
+
             return;
         }
 
+
+        // =====================================================
         // CITIZEN
+        // =====================================================
+
         if (role == Role.CITIZEN) {
 
             if (problem.getUser() == null ||
@@ -328,10 +519,16 @@ public class AttachmentService {
             return;
         }
 
+
+        // =====================================================
         // AUTHORITY
+        // =====================================================
+
         if (role == Role.AUTHORITY) {
 
-            Authority authority = user.getAuthority();
+            Authority authority =
+                    user.getAuthority();
+
 
             if (authority == null ||
                     authority.getId() == null) {
@@ -342,12 +539,14 @@ public class AttachmentService {
                 );
             }
 
+
             boolean assignedToAuthority =
                     assignmentRepository
                             .existsByProblemIdAndAuthorityId(
                                     problem.getId(),
                                     authority.getId()
                             );
+
 
             if (!assignedToAuthority) {
 
@@ -360,11 +559,17 @@ public class AttachmentService {
             return;
         }
 
+
+        // =====================================================
+        // OTHER ROLES
+        // =====================================================
+
         throw new ResponseStatusException(
                 HttpStatus.FORBIDDEN,
                 "You do not have permission to access this attachment"
         );
     }
+
 
     // =========================================================
     // CONVERT ENTITY → RESPONSE DTO

@@ -1,5 +1,6 @@
 package com.localproblemsolver.exception;
 
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -12,6 +13,10 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // =========================================================
+    // VALIDATION EXCEPTION
+    // =========================================================
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, Object> handleValidationException(
@@ -22,7 +27,10 @@ public class GlobalExceptionHandler {
         exception.getBindingResult()
                 .getFieldErrors()
                 .forEach(error ->
-                        errors.put(error.getField(), error.getDefaultMessage())
+                        errors.put(
+                                error.getField(),
+                                error.getDefaultMessage()
+                        )
                 );
 
         Map<String, Object> response = new HashMap<>();
@@ -33,6 +41,11 @@ public class GlobalExceptionHandler {
         return response;
     }
 
+
+    // =========================================================
+    // PROBLEM NOT FOUND
+    // =========================================================
+
     @ExceptionHandler(ProblemNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, Object> handleProblemNotFoundException(
@@ -40,10 +53,18 @@ public class GlobalExceptionHandler {
 
         Map<String, Object> response = new HashMap<>();
 
-        response.put("message", exception.getMessage());
+        response.put(
+                "message",
+                exception.getMessage()
+        );
 
         return response;
     }
+
+
+    // =========================================================
+    // INVALID STATUS TRANSITION
+    // =========================================================
 
     @ExceptionHandler(InvalidStatusTransitionException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -52,10 +73,19 @@ public class GlobalExceptionHandler {
 
         Map<String, Object> response = new HashMap<>();
 
-        response.put("message", exception.getMessage());
+        response.put(
+                "message",
+                exception.getMessage()
+        );
 
         return response;
     }
+
+
+    // =========================================================
+    // CATEGORY NOT FOUND
+    // =========================================================
+
     @ExceptionHandler(CategoryNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, Object> handleCategoryNotFoundException(
@@ -63,9 +93,51 @@ public class GlobalExceptionHandler {
 
         Map<String, Object> response = new HashMap<>();
 
-        response.put("message", exception.getMessage());
+        response.put(
+                "message",
+                exception.getMessage()
+        );
 
         return response;
     }
 
+
+    // =========================================================
+    // DATABASE / DATA ACCESS EXCEPTION
+    // =========================================================
+
+    @ExceptionHandler(DataAccessException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public Map<String, Object> handleDatabaseException(
+            DataAccessException exception) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        response.put(
+                "message",
+                "Database service is currently unavailable"
+        );
+
+        return response;
+    }
+
+
+    // =========================================================
+    // GENERIC / UNEXPECTED EXCEPTION
+    // =========================================================
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public Map<String, Object> handleGenericException(
+            Exception exception) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        response.put(
+                "message",
+                "An unexpected error occurred"
+        );
+
+        return response;
+    }
 }

@@ -23,18 +23,36 @@ public class Assignment {
     @Column(nullable = false)
     private LocalDateTime assignedAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AssignmentStatus status;
+
+    // =========================================================
+    // DEFAULT CONSTRUCTOR
+    // =========================================================
+
     public Assignment() {
     }
+
+    // =========================================================
+    // CONSTRUCTOR
+    // =========================================================
 
     public Assignment(
             Problem problem,
             Authority authority,
-            LocalDateTime assignedAt) {
+            LocalDateTime assignedAt,
+            AssignmentStatus status) {
 
         this.problem = problem;
         this.authority = authority;
         this.assignedAt = assignedAt;
+        this.status = status;
     }
+
+    // =========================================================
+    // GETTERS AND SETTERS
+    // =========================================================
 
     public Long getId() {
         return id;
@@ -66,5 +84,13 @@ public class Assignment {
 
     public void setAssignedAt(LocalDateTime assignedAt) {
         this.assignedAt = assignedAt;
+    }
+
+    public AssignmentStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(AssignmentStatus status) {
+        this.status = status;
     }
 }

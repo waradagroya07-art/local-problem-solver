@@ -8,22 +8,27 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Version;
 
 import java.time.LocalDateTime;
 
 @Entity
 public class Problem {
 
-    // No-argument constructor required by JPA
     public Problem() {
     }
 
-    // Parameterized constructor
-    public Problem(String title, String description, Severity severity,
-                   ProblemStatus status, Priority priority,
+    public Problem(String title,
+                   String description,
+                   Severity severity,
+                   ProblemStatus status,
+                   Priority priority,
                    Category category,
-                   String location, Double latitude, Double longitude,
-                   LocalDateTime createdAt, LocalDateTime updatedAt) {
+                   String location,
+                   Double latitude,
+                   Double longitude,
+                   LocalDateTime createdAt,
+                   LocalDateTime updatedAt) {
 
         this.title = title;
         this.description = description;
@@ -42,6 +47,18 @@ public class Problem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /*
+     * Optimistic Locking
+     *
+     * Hibernate automatically increases this value
+     * whenever the Problem record is updated.
+     *
+     * If two users try to update the same old version,
+     * Hibernate prevents the stale update.
+     */
+    @Version
+    private Long version;
+
     private String title;
 
     private String description;
@@ -55,12 +72,10 @@ public class Problem {
     @Enumerated(EnumType.STRING)
     private Priority priority;
 
-    // Many problems can belong to one category
     @ManyToOne
     @JoinColumn(name = "category_id")
     private Category category;
 
-    // Many problems can belong to one user
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -90,6 +105,14 @@ public class Problem {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     public String getTitle() {
@@ -148,6 +171,14 @@ public class Problem {
         this.user = user;
     }
 
+    public Problem getDuplicateOf() {
+        return duplicateOf;
+    }
+
+    public void setDuplicateOf(Problem duplicateOf) {
+        this.duplicateOf = duplicateOf;
+    }
+
     public String getLocation() {
         return location;
     }
@@ -186,12 +217,5 @@ public class Problem {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
-    }
-    public Problem getDuplicateOf() {
-        return duplicateOf;
-    }
-
-    public void setDuplicateOf(Problem duplicateOf) {
-        this.duplicateOf = duplicateOf;
     }
 }

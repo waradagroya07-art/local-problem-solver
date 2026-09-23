@@ -11,7 +11,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/notifications")
-public class NotificationController {
+public class
+NotificationController {
 
     private final NotificationService notificationService;
 
