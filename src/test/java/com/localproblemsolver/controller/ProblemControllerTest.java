@@ -5,104 +5,151 @@ import com.localproblemsolver.dto.ProblemResponse;
 import com.localproblemsolver.dto.StatusUpdateRequest;
 import com.localproblemsolver.entity.Problem;
 import com.localproblemsolver.entity.ProblemStatus;
-import com.localproblemsolver.entity.Severity;
 import com.localproblemsolver.service.ProblemService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.Authentication;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.*;
 
 class ProblemControllerTest {
 
-    private final ProblemService service =
-            mock(ProblemService.class);
-    private final ProblemController controller =
-            new ProblemController(service);
-    private final Authentication authentication =
-            mock(Authentication.class);
+    private ProblemService service;
+    private ProblemController controller;
+    private Authentication authentication;
+
+    @BeforeEach
+    void setUp() {
+        service = mock(ProblemService.class);
+        controller = new ProblemController(service);
+        authentication = mock(Authentication.class);
+    }
+
 
     @Test
-    void createProblem_buildsProblemAndUsesAuthenticatedEmail() {
+    void createProblem_usesAuthenticatedEmail() {
+
         when(authentication.getName())
                 .thenReturn("citizen@gmail.com");
 
         ProblemRequest request =
-                new ProblemRequest();
+                mock(ProblemRequest.class);
 
-        request.setTitle("Broken road");
-        request.setDescription("Large pothole");
-        request.setSeverity(Severity.HIGH);
-        request.setLocation("Nashik Road");
-        request.setLatitude(19.9975);
-        request.setLongitude(73.7898);
-        request.setCategoryId(3L);
+        when(request.getTitle())
+                .thenReturn("Broken Street Light");
 
-        Problem saved = mock(Problem.class);
+        when(request.getDescription())
+                .thenReturn("Street light is not working");
+
+        when(request.getSeverity())
+                .thenReturn(com.localproblemsolver.entity.Severity.HIGH);
+
+        when(request.getLocation())
+                .thenReturn("Nashik");
+
+        when(request.getLatitude())
+                .thenReturn(20.0059);
+
+        when(request.getLongitude())
+                .thenReturn(73.7910);
+
+        when(request.getCategoryId())
+                .thenReturn(1L);
+
+        Problem problem = new Problem();
+
+        Problem saved =
+                mock(Problem.class);
+
         ProblemResponse expected =
                 mock(ProblemResponse.class);
 
         when(service.saveProblem(
                 any(Problem.class),
-                eq(3L),
-                eq("citizen@gmail.com")))
-                .thenReturn(saved);
+                eq(1L),
+                eq("citizen@gmail.com")
+        )).thenReturn(saved);
 
         when(service.convertToResponse(saved))
                 .thenReturn(expected);
 
-        ProblemResponse actual =
+        assertSame(
+                expected,
                 controller.createProblem(
                         request,
-                        authentication);
-
-        assertSame(expected, actual);
+                        authentication
+                )
+        );
 
         verify(service).saveProblem(
                 any(Problem.class),
-                eq(3L),
-                eq("citizen@gmail.com"));
+                eq(1L),
+                eq("citizen@gmail.com")
+        );
 
-        verify(service).convertToResponse(saved);
+        verify(service)
+                .convertToResponse(saved);
     }
 
+
     @Test
-    void getAllProblems_delegatesToService() {
+    void getAllProblems_usesAuthenticatedEmail() {
+
+        when(authentication.getName())
+                .thenReturn("citizen@gmail.com");
+
         List<ProblemResponse> expected =
                 List.of(mock(ProblemResponse.class));
 
-        when(service.findAllProblems())
-                .thenReturn(expected);
+        when(service.findAllProblems(
+                "citizen@gmail.com"
+        )).thenReturn(expected);
 
         assertSame(
                 expected,
-                controller.getAllProblems()
+                controller.getAllProblems(authentication)
         );
 
-        verify(service).findAllProblems();
+        verify(service)
+                .findAllProblems("citizen@gmail.com");
     }
 
+
     @Test
-    void getProblemById_delegatesToService() {
+    void getProblemById_usesAuthenticatedEmail() {
+
+        when(authentication.getName())
+                .thenReturn("citizen@gmail.com");
+
         ProblemResponse expected =
                 mock(ProblemResponse.class);
 
-        when(service.findProblemById(10L))
-                .thenReturn(expected);
+        when(service.findProblemById(
+                10L,
+                "citizen@gmail.com"
+        )).thenReturn(expected);
 
         assertSame(
                 expected,
-                controller.getProblemById(10L)
+                controller.getProblemById(
+                        10L,
+                        authentication
+                )
         );
 
-        verify(service).findProblemById(10L);
+        verify(service).findProblemById(
+                10L,
+                "citizen@gmail.com"
+        );
     }
+
 
     @Test
     void changeStatus_usesRequestedStatusAndAuthenticatedEmail() {
+
         when(authentication.getName())
                 .thenReturn("authority@gmail.com");
 
@@ -112,15 +159,17 @@ class ProblemControllerTest {
         when(request.getStatus())
                 .thenReturn(ProblemStatus.IN_PROGRESS);
 
-        Problem problem = mock(Problem.class);
+        Problem problem =
+                mock(Problem.class);
+
         ProblemResponse expected =
                 mock(ProblemResponse.class);
 
         when(service.changeStatus(
                 10L,
                 ProblemStatus.IN_PROGRESS,
-                "authority@gmail.com"))
-                .thenReturn(problem);
+                "authority@gmail.com"
+        )).thenReturn(problem);
 
         when(service.convertToResponse(problem))
                 .thenReturn(expected);
@@ -130,7 +179,8 @@ class ProblemControllerTest {
                 controller.changeStatus(
                         10L,
                         request,
-                        authentication)
+                        authentication
+                )
         );
 
         verify(service).changeStatus(
@@ -138,63 +188,8 @@ class ProblemControllerTest {
                 ProblemStatus.IN_PROGRESS,
                 "authority@gmail.com"
         );
-    }
 
-    @Test
-    void confirmProblem_usesAuthenticatedEmail() {
-        when(authentication.getName())
-                .thenReturn("citizen@gmail.com");
-
-        Problem problem = mock(Problem.class);
-        ProblemResponse expected =
-                mock(ProblemResponse.class);
-
-        when(service.confirmProblem(
-                10L,
-                "citizen@gmail.com"))
-                .thenReturn(problem);
-
-        when(service.convertToResponse(problem))
-                .thenReturn(expected);
-
-        assertSame(
-                expected,
-                controller.confirmProblem(
-                        10L,
-                        authentication)
-        );
-
-        verify(service).confirmProblem(
-                10L,
-                "citizen@gmail.com");
-    }
-
-    @Test
-    void reopenProblem_usesAuthenticatedEmail() {
-        when(authentication.getName())
-                .thenReturn("citizen@gmail.com");
-
-        Problem problem = mock(Problem.class);
-        ProblemResponse expected =
-                mock(ProblemResponse.class);
-
-        when(service.reopenProblem(
-                10L,
-                "citizen@gmail.com"))
-                .thenReturn(problem);
-
-        when(service.convertToResponse(problem))
-                .thenReturn(expected);
-
-        assertSame(
-                expected,
-                controller.reopenProblem(
-                        10L,
-                        authentication)
-        );
-
-        verify(service).reopenProblem(
-                10L,
-                "citizen@gmail.com");
+        verify(service)
+                .convertToResponse(problem);
     }
 }

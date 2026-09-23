@@ -20,6 +20,7 @@ public class ProblemController {
         this.problemService = problemService;
     }
 
+
     // =========================================================
     // CREATE PROBLEM
     // =========================================================
@@ -51,16 +52,21 @@ public class ProblemController {
         return problemService.convertToResponse(savedProblem);
     }
 
+
     // =========================================================
     // GET ALL PROBLEMS
     // =========================================================
 
     @GetMapping("/api/problems")
     @PreAuthorize("isAuthenticated()")
-    public List<ProblemResponse> getAllProblems() {
+    public List<ProblemResponse> getAllProblems(
+            Authentication authentication) {
 
-        return problemService.findAllProblems();
+        String userEmail = authentication.getName();
+
+        return problemService.findAllProblems(userEmail);
     }
+
 
     // =========================================================
     // GET PROBLEM BY ID
@@ -69,10 +75,17 @@ public class ProblemController {
     @GetMapping("/api/problems/{id}")
     @PreAuthorize("isAuthenticated()")
     public ProblemResponse getProblemById(
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            Authentication authentication) {
 
-        return problemService.findProblemById(id);
+        String userEmail = authentication.getName();
+
+        return problemService.findProblemById(
+                id,
+                userEmail
+        );
     }
+
 
     // =========================================================
     // CHANGE PROBLEM STATUS
@@ -90,48 +103,6 @@ public class ProblemController {
         Problem problem = problemService.changeStatus(
                 id,
                 request.getStatus(),
-                userEmail
-        );
-
-        return problemService.convertToResponse(problem);
-    }
-
-    // =========================================================
-    // CITIZEN CONFIRM PROBLEM
-    // RESOLVED → CLOSED
-    // =========================================================
-
-    @PostMapping("/api/problems/{id}/confirm")
-    @PreAuthorize("hasRole('CITIZEN')")
-    public ProblemResponse confirmProblem(
-            @PathVariable Long id,
-            Authentication authentication) {
-
-        String userEmail = authentication.getName();
-
-        Problem problem = problemService.confirmProblem(
-                id,
-                userEmail
-        );
-
-        return problemService.convertToResponse(problem);
-    }
-
-    // =========================================================
-    // CITIZEN REOPEN PROBLEM
-    // RESOLVED → REOPENED
-    // =========================================================
-
-    @PostMapping("/api/problems/{id}/reopen")
-    @PreAuthorize("hasRole('CITIZEN')")
-    public ProblemResponse reopenProblem(
-            @PathVariable Long id,
-            Authentication authentication) {
-
-        String userEmail = authentication.getName();
-
-        Problem problem = problemService.reopenProblem(
-                id,
                 userEmail
         );
 

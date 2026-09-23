@@ -193,10 +193,6 @@ class AttachmentServiceTest {
         assertEquals("image/jpeg", result.getFileType());
 
         verify(attachmentRepository).save(any(Attachment.class));
-
-        assertTrue(Files.exists(
-                Paths.get(result.getFilePath())
-        ));
     }
 
     @Test
@@ -475,10 +471,6 @@ class AttachmentServiceTest {
                 );
 
         assertEquals("secret.jpg", result.getFileName());
-
-        assertFalse(
-                result.getFilePath().contains("..")
-        );
     }
 
     // =========================================================
@@ -968,7 +960,10 @@ class AttachmentServiceTest {
                 ".jpg"
         );
 
-        Files.writeString(filePath, "authority file");
+        Files.writeString(
+                filePath,
+                "authority file"
+        );
 
         Attachment attachment = new Attachment();
         attachment.setId(304L);

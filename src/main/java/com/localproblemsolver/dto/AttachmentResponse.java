@@ -8,7 +8,6 @@ public class AttachmentResponse {
     private Long problemId;
     private String fileName;
     private String fileType;
-    private String filePath;
     private LocalDateTime uploadedAt;
 
     public AttachmentResponse() {
@@ -19,14 +18,12 @@ public class AttachmentResponse {
             Long problemId,
             String fileName,
             String fileType,
-            String filePath,
             LocalDateTime uploadedAt) {
 
         this.id = id;
         this.problemId = problemId;
         this.fileName = fileName;
         this.fileType = fileType;
-        this.filePath = filePath;
         this.uploadedAt = uploadedAt;
     }
 
@@ -60,14 +57,6 @@ public class AttachmentResponse {
 
     public void setFileType(String fileType) {
         this.fileType = fileType;
-    }
-
-    public String getFilePath() {
-        return filePath;
-    }
-
-    public void setFilePath(String filePath) {
-        this.filePath = filePath;
     }
 
     public LocalDateTime getUploadedAt() {

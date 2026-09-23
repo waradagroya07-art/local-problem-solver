@@ -117,9 +117,18 @@ public class ProblemService {
 
 
     // =========================================================
-    // GET ALL PROBLEMS
+    // GET ALL PROBLEMS - LEGACY INTERNAL METHOD
     // =========================================================
 
+    /*
+     * Kept temporarily for compatibility with existing service tests
+     * and internal code.
+     *
+     * Controllers must use:
+     * findAllProblems(String userEmail)
+     *
+     * so that API-level authorization is enforced.
+     */
     public List<ProblemResponse> findAllProblems() {
 
         return problemRepository.findAll()
@@ -130,9 +139,104 @@ public class ProblemService {
 
 
     // =========================================================
-    // GET PROBLEM BY ID
+    // GET ALL PROBLEMS - AUTHORIZED
     // =========================================================
 
+    public List<ProblemResponse> findAllProblems(
+            String userEmail) {
+
+        User user = findAuthenticatedUser(userEmail);
+
+        Role role = user.getRole();
+
+        // -----------------------------------------------------
+        // MODERATOR / SUPER ADMIN
+        // -----------------------------------------------------
+
+        if (role == Role.MODERATOR ||
+                role == Role.SUPER_ADMIN) {
+
+            return problemRepository.findAll()
+                    .stream()
+                    .map(this::convertToResponse)
+                    .toList();
+        }
+
+
+        // -----------------------------------------------------
+        // CITIZEN
+        // -----------------------------------------------------
+
+        if (role == Role.CITIZEN) {
+
+            return problemRepository.findAll()
+                    .stream()
+                    .filter(problem ->
+                            problem.getUser() != null
+                                    && problem.getUser().getId() != null
+                                    && problem.getUser().getId()
+                                    .equals(user.getId())
+                    )
+                    .map(this::convertToResponse)
+                    .toList();
+        }
+
+
+        // -----------------------------------------------------
+        // AUTHORITY
+        // -----------------------------------------------------
+
+        if (role == Role.AUTHORITY) {
+
+            if (user.getAuthority() == null ||
+                    user.getAuthority().getId() == null) {
+
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Authority is not linked to this user"
+                );
+            }
+
+            Long authorityId =
+                    user.getAuthority().getId();
+
+            return problemRepository.findAll()
+                    .stream()
+                    .filter(problem ->
+                            problem.getId() != null
+                                    && assignmentRepository
+                                    .existsByProblemIdAndAuthorityId(
+                                            problem.getId(),
+                                            authorityId
+                                    )
+                    )
+                    .map(this::convertToResponse)
+                    .toList();
+        }
+
+
+        // -----------------------------------------------------
+        // UNKNOWN / UNSUPPORTED ROLE
+        // -----------------------------------------------------
+
+        throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "You do not have permission to view problems"
+        );
+    }
+
+
+    // =========================================================
+    // GET PROBLEM BY ID - LEGACY INTERNAL METHOD
+    // =========================================================
+
+    /*
+     * Kept temporarily for compatibility with existing service
+     * tests and internal code.
+     *
+     * Controllers must use:
+     * findProblemById(Long id, String userEmail)
+     */
     public ProblemResponse findProblemById(Long id) {
 
         Problem problem = problemRepository.findById(id)
@@ -143,6 +247,146 @@ public class ProblemService {
                 );
 
         return convertToResponse(problem);
+    }
+
+
+    // =========================================================
+    // GET PROBLEM BY ID - AUTHORIZED
+    // =========================================================
+
+    public ProblemResponse findProblemById(
+            Long id,
+            String userEmail) {
+
+        Problem problem = problemRepository.findById(id)
+                .orElseThrow(() ->
+                        new ProblemNotFoundException(
+                                "Problem not found with id: " + id
+                        )
+                );
+
+        User user = findAuthenticatedUser(userEmail);
+
+        verifyProblemReadAccess(problem, user);
+
+        return convertToResponse(problem);
+    }
+
+
+    // =========================================================
+    // FIND AUTHENTICATED USER
+    // =========================================================
+
+    private User findAuthenticatedUser(
+            String userEmail) {
+
+        return userRepository.findByEmail(userEmail)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.UNAUTHORIZED,
+                                "Authenticated user not found"
+                        )
+                );
+    }
+
+
+    // =========================================================
+    // VERIFY PROBLEM READ ACCESS
+    // =========================================================
+
+    private void verifyProblemReadAccess(
+            Problem problem,
+            User user) {
+
+        Role role = user.getRole();
+
+
+        // =====================================================
+        // SUPER ADMIN
+        // =====================================================
+
+        if (role == Role.SUPER_ADMIN) {
+            return;
+        }
+
+
+        // =====================================================
+        // MODERATOR
+        // =====================================================
+
+        if (role == Role.MODERATOR) {
+            return;
+        }
+
+
+        // =====================================================
+        // CITIZEN
+        // =====================================================
+
+        if (role == Role.CITIZEN) {
+
+            if (problem.getUser() == null ||
+                    problem.getUser().getId() == null ||
+                    user.getId() == null ||
+                    !problem.getUser()
+                            .getId()
+                            .equals(user.getId())) {
+
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "You can access only your own problems"
+                );
+            }
+
+            return;
+        }
+
+
+        // =====================================================
+        // AUTHORITY
+        // =====================================================
+
+        if (role == Role.AUTHORITY) {
+
+            if (user.getAuthority() == null ||
+                    user.getAuthority().getId() == null) {
+
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Authority is not linked to this user"
+                );
+            }
+
+            Long authorityId =
+                    user.getAuthority().getId();
+
+            boolean assignedToAuthority =
+                    assignmentRepository
+                            .existsByProblemIdAndAuthorityId(
+                                    problem.getId(),
+                                    authorityId
+                            );
+
+            if (!assignedToAuthority) {
+
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "This problem is not assigned to your authority"
+                );
+            }
+
+            return;
+        }
+
+
+        // =====================================================
+        // OTHER ROLES
+        // =====================================================
+
+        throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "You do not have permission to view this problem"
+        );
     }
 
 
@@ -213,10 +457,7 @@ public class ProblemService {
 
         statusHistoryRepository.save(statusHistory);
 
-        // =====================================================
-        // CREATE STATUS CHANGED NOTIFICATION
-        // =====================================================
-
+        // Create status changed notification
         notificationService.createNotification(
                 "The status of your problem #"
                         + id
@@ -339,9 +580,7 @@ public class ProblemService {
             ProblemStatus currentStatus,
             ProblemStatus newStatus) {
 
-        // OPEN
-        // ↓
-        // VALIDATED / ASSIGNED / REJECTED / DUPLICATE
+        // OPEN → VALIDATED / ASSIGNED / REJECTED / DUPLICATE
 
         if (currentStatus == ProblemStatus.OPEN
                 && (newStatus == ProblemStatus.VALIDATED
@@ -353,9 +592,7 @@ public class ProblemService {
         }
 
 
-        // VALIDATED
-        // ↓
-        // ASSIGNED / REJECTED / DUPLICATE
+        // VALIDATED → ASSIGNED / REJECTED / DUPLICATE
 
         if (currentStatus == ProblemStatus.VALIDATED
                 && (newStatus == ProblemStatus.ASSIGNED
@@ -366,9 +603,7 @@ public class ProblemService {
         }
 
 
-        // ASSIGNED
-        // ↓
-        // IN_PROGRESS
+        // ASSIGNED → IN_PROGRESS
 
         if (currentStatus == ProblemStatus.ASSIGNED
                 && newStatus == ProblemStatus.IN_PROGRESS) {
@@ -377,9 +612,7 @@ public class ProblemService {
         }
 
 
-        // IN_PROGRESS
-        // ↓
-        // RESOLVED
+        // IN_PROGRESS → RESOLVED
 
         if (currentStatus == ProblemStatus.IN_PROGRESS
                 && newStatus == ProblemStatus.RESOLVED) {
@@ -388,9 +621,7 @@ public class ProblemService {
         }
 
 
-        // RESOLVED
-        // ↓
-        // CLOSED
+        // RESOLVED → CLOSED
 
         if (currentStatus == ProblemStatus.RESOLVED
                 && newStatus == ProblemStatus.CLOSED) {
@@ -399,9 +630,7 @@ public class ProblemService {
         }
 
 
-        // RESOLVED
-        // ↓
-        // REOPENED
+        // RESOLVED → REOPENED
 
         if (currentStatus == ProblemStatus.RESOLVED
                 && newStatus == ProblemStatus.REOPENED) {
@@ -410,9 +639,7 @@ public class ProblemService {
         }
 
 
-        // CLOSED
-        // ↓
-        // REOPENED
+        // CLOSED → REOPENED
 
         if (currentStatus == ProblemStatus.CLOSED
                 && newStatus == ProblemStatus.REOPENED) {
@@ -421,9 +648,7 @@ public class ProblemService {
         }
 
 
-        // REOPENED
-        // ↓
-        // IN_PROGRESS
+        // REOPENED → IN_PROGRESS
 
         if (currentStatus == ProblemStatus.REOPENED
                 && newStatus == ProblemStatus.IN_PROGRESS) {
@@ -531,7 +756,7 @@ public class ProblemService {
         // Link duplicate problem to the original problem
         duplicateProblem.setDuplicateOf(originalProblem);
 
-        // Save the relationship first
+        // Save relationship first
         problemRepository.save(duplicateProblem);
 
         // Change status and create status history
@@ -615,4 +840,3 @@ public class ProblemService {
         }
     }
 }
-

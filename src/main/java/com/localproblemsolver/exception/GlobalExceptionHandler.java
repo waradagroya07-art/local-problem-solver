@@ -2,11 +2,14 @@ package com.localproblemsolver.exception;
 
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -103,6 +106,69 @@ public class GlobalExceptionHandler {
 
 
     // =========================================================
+    // ACCESS DENIED
+    // =========================================================
+
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public Map<String, Object> handleAccessDeniedException(
+            AccessDeniedException exception) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        response.put(
+                "message",
+                "You are not authorized to access this resource"
+        );
+
+        return response;
+    }
+
+
+    // =========================================================
+    // RESPONSE STATUS EXCEPTION
+    // =========================================================
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatusException(
+            ResponseStatusException exception) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        response.put(
+                "message",
+                exception.getReason() != null
+                        ? exception.getReason()
+                        : "Request failed"
+        );
+
+        return ResponseEntity
+                .status(exception.getStatusCode())
+                .body(response);
+    }
+
+
+    // =========================================================
+    // INVALID ARGUMENT
+    // =========================================================
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, Object> handleIllegalArgumentException(
+            IllegalArgumentException exception) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        response.put(
+                "message",
+                exception.getMessage()
+        );
+
+        return response;
+    }
+
+
+    // =========================================================
     // DATABASE / DATA ACCESS EXCEPTION
     // =========================================================
 
@@ -136,20 +202,6 @@ public class GlobalExceptionHandler {
         response.put(
                 "message",
                 "An unexpected error occurred"
-        );
-
-        return response;
-    }
-    @ExceptionHandler(AccessDeniedException.class)
-    @ResponseStatus(HttpStatus.FORBIDDEN)
-    public Map<String, Object> handleAccessDeniedException(
-            AccessDeniedException exception) {
-
-        Map<String, Object> response = new HashMap<>();
-
-        response.put(
-                "message",
-                "You are not authorized to access this resource"
         );
 
         return response;

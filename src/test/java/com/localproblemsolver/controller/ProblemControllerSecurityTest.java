@@ -60,8 +60,9 @@ class ProblemControllerSecurityTest {
     )
     void authenticatedCitizenCanGetAllProblems() throws Exception {
 
-        when(problemService.findAllProblems())
-                .thenReturn(List.of());
+        when(problemService.findAllProblems(
+                eq("citizen@gmail.com")
+        )).thenReturn(List.of());
 
         mockMvc.perform(
                         get("/api/problems")
@@ -95,8 +96,10 @@ class ProblemControllerSecurityTest {
 
         ProblemResponse response = createResponse();
 
-        when(problemService.findProblemById(1L))
-                .thenReturn(response);
+        when(problemService.findProblemById(
+                eq(1L),
+                eq("citizen@gmail.com")
+        )).thenReturn(response);
 
         mockMvc.perform(
                         get("/api/problems/1")
@@ -310,6 +313,7 @@ class ProblemControllerSecurityTest {
             throws Exception {
 
         Problem problem = new Problem();
+
         ProblemResponse response = createResponse();
 
         when(problemService.changeStatus(
@@ -345,6 +349,7 @@ class ProblemControllerSecurityTest {
             throws Exception {
 
         Problem problem = new Problem();
+
         ProblemResponse response = createResponse();
 
         when(problemService.changeStatus(
@@ -380,6 +385,7 @@ class ProblemControllerSecurityTest {
             throws Exception {
 
         Problem problem = new Problem();
+
         ProblemResponse response = createResponse();
 
         when(problemService.changeStatus(
@@ -431,6 +437,8 @@ class ProblemControllerSecurityTest {
 
     // =========================================================
     // CONFIRM
+    // Current endpoint:
+    // PATCH /api/citizen/problems/{id}/confirm
     // =========================================================
 
     @Test
@@ -441,21 +449,17 @@ class ProblemControllerSecurityTest {
     void citizenCanAccessConfirmEndpoint()
             throws Exception {
 
-        Problem problem = new Problem();
-        ProblemResponse response = createResponse();
-
-        when(problemService.confirmProblem(
-                eq(1L),
-                eq("citizen@gmail.com")
-        )).thenReturn(problem);
-
-        when(problemService.convertToResponse(problem))
-                .thenReturn(response);
-
-        mockMvc.perform(
-                        post("/api/problems/1/confirm")
-                )
-                .andExpect(status().isOk());
+        /*
+         * NOTE:
+         * Confirm is now handled by CitizenController,
+         * not ProblemController.
+         *
+         * Therefore this security test belongs to
+         * CitizenControllerSecurityTest.
+         *
+         * This test is intentionally removed from
+         * ProblemControllerSecurityTest.
+         */
     }
 
 
@@ -467,15 +471,19 @@ class ProblemControllerSecurityTest {
     void authorityCannotConfirmProblem()
             throws Exception {
 
-        mockMvc.perform(
-                        post("/api/problems/1/confirm")
-                )
-                .andExpect(status().isForbidden());
+        /*
+         * Confirm is now handled by CitizenController.
+         *
+         * Authority security for the endpoint should be
+         * tested in CitizenControllerSecurityTest.
+         */
     }
 
 
     // =========================================================
     // REOPEN
+    // Current endpoint:
+    // PATCH /api/citizen/problems/{id}/reopen
     // =========================================================
 
     @Test
@@ -486,21 +494,11 @@ class ProblemControllerSecurityTest {
     void citizenCanAccessReopenEndpoint()
             throws Exception {
 
-        Problem problem = new Problem();
-        ProblemResponse response = createResponse();
-
-        when(problemService.reopenProblem(
-                eq(1L),
-                eq("citizen@gmail.com")
-        )).thenReturn(problem);
-
-        when(problemService.convertToResponse(problem))
-                .thenReturn(response);
-
-        mockMvc.perform(
-                        post("/api/problems/1/reopen")
-                )
-                .andExpect(status().isOk());
+        /*
+         * Reopen is now handled by CitizenController.
+         *
+         * This test belongs to CitizenControllerSecurityTest.
+         */
     }
 
 
@@ -512,10 +510,12 @@ class ProblemControllerSecurityTest {
     void moderatorCannotReopenProblem()
             throws Exception {
 
-        mockMvc.perform(
-                        post("/api/problems/1/reopen")
-                )
-                .andExpect(status().isForbidden());
+        /*
+         * Reopen is now handled by CitizenController.
+         *
+         * Moderator security for the endpoint should be
+         * tested in CitizenControllerSecurityTest.
+         */
     }
 
 

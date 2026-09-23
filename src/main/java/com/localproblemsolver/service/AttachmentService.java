@@ -572,8 +572,8 @@ public class AttachmentService {
 
 
     // =========================================================
-    // CONVERT ENTITY → RESPONSE DTO
-    // =========================================================
+// CONVERT ENTITY → RESPONSE DTO
+// =========================================================
 
     private AttachmentResponse convertToResponse(
             Attachment attachment) {
@@ -583,7 +583,6 @@ public class AttachmentService {
                 attachment.getProblem().getId(),
                 attachment.getFileName(),
                 attachment.getFileType(),
-                attachment.getFilePath(),
                 attachment.getUploadedAt()
         );
     }
