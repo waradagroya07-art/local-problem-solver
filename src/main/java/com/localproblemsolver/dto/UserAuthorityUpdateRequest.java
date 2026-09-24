@@ -1,7 +1,10 @@
 package com.localproblemsolver.dto;
 
+import jakarta.validation.constraints.NotNull;
+
 public class UserAuthorityUpdateRequest {
 
+    @NotNull(message = "Authority id is required")
     private Long authorityId;
 
     public UserAuthorityUpdateRequest() {
