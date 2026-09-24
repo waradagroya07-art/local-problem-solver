@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
-
+import com.localproblemsolver.exception.UserNotFoundException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -202,6 +202,20 @@ public class GlobalExceptionHandler {
         response.put(
                 "message",
                 "An unexpected error occurred"
+        );
+
+        return response;
+    }
+    @ExceptionHandler(UserNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public Map<String, Object> handleUserNotFoundException(
+            UserNotFoundException exception) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        response.put(
+                "message",
+                exception.getMessage()
         );
 
         return response;
